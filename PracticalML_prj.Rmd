@@ -1,0 +1,79 @@
+---
+title: "Course Project"
+author: "JY"
+date: '2017 7 26 '
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Preprocessing
+
+The training data have many "#DIV/0!", "NA", blanks, so these values need to be set to the same value of NA.
+After that, some columns consists of all NA and needless columns (like X, user_names) are deleted.
+"classe" is converted to factors which in needed for randomForest package.
+
+```{r preprocessing, echo=FALSE, message=FALSE, warning=FALSE}
+
+library(caret)
+library(randomForest)
+
+set.seed(12345)
+
+## load data. replace "#DIV/0!", "NA"", blanks
+training <- read.table("pml-training.csv", sep=",", na.strings=c("#DIV/0!","","NA"), stringsAsFactors=FALSE, header=TRUE)
+testing <- read.table("pml-testing.csv", sep=",", na.strings=c("#DIV/0!","","NA"), stringsAsFactors=FALSE, header=TRUE)
+
+
+##preprocessing
+# omit columns with all NA's
+training_data <- training[,colSums(is.na(training))==0]
+testing_data <- testing[,colSums(is.na(training))==0] 
+
+# omit unnessesary columns
+training_data <- training_data[,-c(1:7)]
+testing_data <- testing_data[,-c(1:7)]
+
+# make classe factor
+training_data$classe <- as.factor(training_data$classe)
+```
+
+## Modeling
+Because we have a large sample size in the traing data set, devide the data into training_sub(70%) and validate_sub(30%).
+Then make model with traing_sub data.
+
+```{r modeling}
+# prepair data for training and validation
+inTrain <- createDataPartition(y=training_data$classe, p=0.7, list=FALSE)
+training_sub <- training_data[inTrain,]
+validate_sub <- training_data[-inTrain,]
+
+## make model
+model <- randomForest(classe~., data=training_sub, importance=TRUE)
+```
+
+## Evaluation
+
+Evaluated the model with validate_sub data and confusion matrix are presented.
+
+```{r result}
+# see accuracy
+result <- predict(model, validate_sub)
+confusionMatrix(result, validate_sub$classe)
+```
+
+The accuracy is so high(0.9932). So, random forest is good algorithm for prediction.
+
+
+## Prediction Result
+
+In the end, the model is applied to given testing data set to predict "classe".
+
+
+```{r predict}
+## predict test set
+predict(model, testing_data)
+```
+
